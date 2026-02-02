@@ -346,11 +346,3 @@ class SimpleServerApp(ctk.CTk):
 if __name__ == "__main__":
     app = SimpleServerApp()
     app.mainloop()
-
-if __name__ == "__main__":
-    app = SimpleServerApp()
-    app.mainloop()
-
-if __name__ == "__main__":
-    app = SimpleServerApp()
-    app.mainloop()
