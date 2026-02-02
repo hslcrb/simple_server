@@ -30,13 +30,13 @@ jobs:
         include:
           - os: ubuntu-latest
             artifact_name: SimpleServer-Linux
-            executable_name: SimpleServer
+            executable_name: SimpleServer-Linux
           - os: windows-latest
             artifact_name: SimpleServer-Windows
-            executable_name: SimpleServer.exe
+            executable_name: SimpleServer-Windows.exe
           - os: macos-latest
             artifact_name: SimpleServer-MacOS
-            executable_name: SimpleServer
+            executable_name: SimpleServer-MacOS
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -93,9 +93,9 @@ jobs:
             - Built for Linux, Windows, and MacOS.
             - Docker image pushed to GHCR.
           files: |
-            artifacts/SimpleServer-Linux/SimpleServer
-            artifacts/SimpleServer-Windows/SimpleServer.exe
-            artifacts/SimpleServer-MacOS/SimpleServer
+            artifacts/SimpleServer-Linux/SimpleServer-Linux
+            artifacts/SimpleServer-Windows/SimpleServer-Windows.exe
+            artifacts/SimpleServer-MacOS/SimpleServer-MacOS
           token: ${{ secrets.GITHUB_TOKEN }}
 
   docker-ghcr:
