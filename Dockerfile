@@ -3,9 +3,10 @@ FROM python:3.11-slim as builder
 
 WORKDIR /app
 
-# Install build dependencies
+# Install build dependencies and tkinter
 RUN apt-get update && apt-get install -y \
     build-essential \
+    python3-tk \
     && rm -rf /var/lib/apt/lists/*
 
 # Install python dependencies
@@ -17,6 +18,12 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# Install runtime dependencies for tkinter
+RUN apt-get update && apt-get install -y \
+    python3-tk \
+    libtk8.6 \
+    && rm -rf /var/lib/apt/lists/*
+
 # Copy installed packages from builder
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
@@ -26,12 +33,10 @@ COPY . .
 
 # Environment variables
 ENV PYTHONUNBUFFERED=1
-ENV FLASK_APP=main.py
+ENV DISPLAY=:0
 
 # Expose the default port
 EXPOSE 8080
 
-# Note: This is a GUI app, so running it inside a standard Docker container 
-# will require an X11 server or similar setup (e.g., VNC/XVFB).
-# This Dockerfile is provided as a template for the server logic.
+# CMD to start the app
 CMD ["python", "main.py"]
