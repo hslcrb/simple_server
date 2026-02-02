@@ -9,21 +9,39 @@ permissions:
   packages: write
 
 jobs:
-  version:
+  version-check:
     runs-on: ubuntu-latest
     outputs:
-      new_tag: ${{ steps.tag_version.outputs.new_tag }}
+      should_release: ${{ steps.check.outputs.should_release }}
+      new_tag: ${{ steps.check.outputs.new_tag }}
     steps:
       - uses: actions/checkout@v4
-      - name: Bump version and push tag
-        id: tag_version
-        uses: mathieudutour/github-tag-action@v6.2
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          default_bump: patch
+          fetch-depth: 0
+      - id: check
+        run: |
+          # 전체 커밋 수 확인
+          COUNT=$(git rev-list --count HEAD)
+          
+          # 10으로 나눈 몫을 주 버전으로 사용 (예: 10회=v1.0.0, 20회=v2.0.0)
+          VERSION=$((COUNT / 10))
+          TAG="v${VERSION}.0.0"
+          
+          echo "Current Total Commits: $COUNT"
+          echo "Target Tag: $TAG"
+          echo "new_tag=$TAG" >> $GITHUB_OUTPUT
+          
+          # 정확히 10의 배수일 때만 릴리즈 트리거
+          if [ $((COUNT % 10)) -eq 0 ] && [ $COUNT -gt 0 ]; then
+            echo "should_release=true" >> $GITHUB_OUTPUT
+            echo "🎯 10th commit milestone reached. Triggering Release."
+          else
+            echo "should_release=false" >> $GITHUB_OUTPUT
+            echo "⏳ Commit count is $COUNT. Next release at next 10th milestone."
+          fi
 
   build-binaries:
-    needs: version
+    needs: version-check
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
@@ -71,7 +89,8 @@ jobs:
           path: dist/${{ matrix.executable_name }}
 
   release:
-    needs: [version, build-binaries]
+    needs: [version-check, build-binaries]
+    if: needs.version-check.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -81,13 +100,15 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ needs.version.outputs.new_tag }}
-          name: Release ${{ needs.version.outputs.new_tag }}
+          tag_name: ${{ needs.version-check.outputs.new_tag }}
+          name: Release ${{ needs.version-check.outputs.new_tag }}
           body: |
-            Automated Release for version ${{ needs.version.outputs.new_tag }}
+            ## Simple Server Premium Milestone Release
+            정기 자동 배포 (누적 커밋 10회 단위)
             
-            - Built for Linux, Windows, and MacOS.
-            - Docker image pushed to GHCR.
+            - **버전**: ${{ needs.version-check.outputs.new_tag }}
+            - **빌드 내역**: Linux, Windows, MacOS 단일 실행 파일
+            - **컨테이너**: GHCR 도커 이미지 업데이트 완료
           files: |
             artifacts/SimpleServer-Linux/SimpleServer-Linux
             artifacts/SimpleServer-Windows/SimpleServer-Windows.exe
@@ -95,7 +116,8 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
   docker-ghcr:
-    needs: version
+    needs: version-check
+    if: needs.version-check.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -113,7 +135,7 @@ jobs:
           images: ghcr.io/${{ github.repository }}
           tags: |
             type=raw,value=latest
-            type=raw,value=${{ needs.version.outputs.new_tag }}
+            type=raw,value=${{ needs.version-check.outputs.new_tag }}
           flavor: |
             latest=auto
 
